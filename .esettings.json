@@ -1,6 +1,22 @@
 {
-  "use_tabs": false,
-  "python_indent_size": 4,
-  "web_indent_size": 4,
-  "cython_indent_size": 4
+  "python": {
+    "indent": 4,
+    "use_tabs": false
+  },
+  "web": {
+    "indent": 2,
+    "use_tabs": false
+  },
+  "cython": {
+    "indent": 4,
+    "use_tabs": false
+  },
+  "lisp": {
+    "indent": 2,
+    "use_tabs": false
+  },
+  "json": {
+    "indent": 2,
+    "use_tabs": false
+  }
 }
