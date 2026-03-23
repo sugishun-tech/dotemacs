@@ -52,20 +52,26 @@
 ;; Pythonの設定
 ;; ==========================================
 (defun my/python-format-code ()
-  "Run autopep8 and isort, applying settings from json."
+  "Run autopep8 and isort, handling tab vs space settings."
   (interactive)
   (when (and (derived-mode-p 'python-mode)
              (executable-find "autopep8")
              (executable-find "isort"))
     (let* ((indent-size (my/get-setting "python_indent_size" 4))
-           ;; autopep8にインデントサイズを渡す (※新しめのバージョンが必要)
-           (cmd (format "autopep8 --ignore=E501 --indent-size=%d - | isort -" indent-size)))
+           (use-tabs (my/get-setting "use_tabs" nil))
+           ;; Tabを使う場合は、Tab関連のPEP8警告を無視させる
+           (ignore-rules (if use-tabs "E501,W191,E101,E111,E114" "E501"))
+           (cmd (format "autopep8 --ignore=%s --indent-size=%d - | isort -" ignore-rules indent-size)))
       (shell-command-on-region (point-min) (point-max) cmd nil t)
-      (message "autopep8 (indent: %d) and isort applied." indent-size))))
+      (message "autopep8 (ignore: %s) and isort applied." ignore-rules))))
 
 (defun my/python-mode-hook ()
-  (setq python-indent-offset (my/get-setting "python_indent_size" 4)
-        indent-tabs-mode (my/get-setting "use_tabs" nil)))
+  (let ((use-tabs (my/get-setting "use_tabs" nil))
+        (indent-size (my/get-setting "python_indent_size" 4)))
+    (setq python-indent-offset indent-size
+          indent-tabs-mode use-tabs)
+    ;; Tab使用時はEmacsの見た目上のTab幅も合わせる
+    (when use-tabs (setq tab-width indent-size))))
 
 (add-hook 'python-mode-hook 'my/python-mode-hook)
 
@@ -82,11 +88,13 @@
 
 (defun my/web-mode-hook ()
   "Web modeのフック関数 (JSONから設定を反映)"
-  (let ((indent (my/get-setting "web_indent_size" 2)))
+  (let ((indent (my/get-setting "web_indent_size" 2))
+        (use-tabs (my/get-setting "use_tabs" nil)))
     (setq web-mode-markup-indent-offset indent
           web-mode-css-indent-offset indent
           web-mode-code-indent-offset indent
-          indent-tabs-mode (my/get-setting "use_tabs" nil))))
+          indent-tabs-mode use-tabs)
+    (when use-tabs (setq tab-width indent))))
 
 (add-hook 'web-mode-hook 'my/web-mode-hook)
 
@@ -110,10 +118,11 @@
 
 (defun my/cython-mode-hook ()
   "Cython modeのフック関数 (JSONから設定を反映)"
-  (setq python-indent-offset (my/get-setting "cython_indent_size" 4)
-        indent-tabs-mode (my/get-setting "use_tabs" nil)))
-
-(add-hook 'cython-mode-hook 'my/cython-mode-hook)
+  (let ((indent (my/get-setting "cython_indent_size" 4))
+        (use-tabs (my/get-setting "use_tabs" nil)))
+    (setq python-indent-offset indent
+          indent-tabs-mode use-tabs)
+    (when use-tabs (setq tab-width indent))))
 
 (defun my/cython-format-code ()
   "Cython用のオートフォーマット"
