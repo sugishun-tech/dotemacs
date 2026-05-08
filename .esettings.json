@@ -4,7 +4,7 @@
     "use_tabs": false
   },
   "web": {
-    "indent": 2,
+    "indent": 4,
     "use_tabs": false
   },
   "cython": {
