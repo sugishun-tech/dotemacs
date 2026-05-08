@@ -10,8 +10,7 @@
      emmet-mode
      cython-mode
      json-mode
-     typescript-mode 
-     prettier-js))
+     typescript-mode))
 
 (unless package-archive-contents (package-refresh-contents))
 (dolist (pkg my/packages)
@@ -132,17 +131,16 @@
 ;; TypeScript / React (TSX) 設定
 ;; ==========================================
 (defun my/typescript-format-code ()
-  "Prettierを使用してコードを整形する（インデント値を明示的に渡す）"
+  "Prettierコマンドを直接呼び出して整形する"
   (interactive)
-  (if (executable-find "prettier")
-    (let* ((indent (my/get-conf "web" "indent" 4)) ;; webの設定から取得 [cite: 2, 6]
-            ;; prettierのコマンドを組み立てる
-            (cmd (format "prettier --stdin-filepath %s --tab-width %d" 
-                   (or buffer-file-name "test.tsx") 
+  (let ((indent (my/get-conf "web" "indent" 4))) ;; webの設定(4)を取得
+    (if (executable-find "prettier")
+      (let ((cmd (format "prettier --stdin-filepath %s --tab-width %d"
+                   (or buffer-file-name "test.tsx")
                    indent)))
-      (shell-command-on-region (point-min) (point-max) cmd nil t)
-      (message "Prettier formatted with indent %d." indent))
-    (message "Prettier executable not found.")))
+        (shell-command-on-region (point-min) (point-max) cmd nil t)
+        (message "Formatted with Prettier (indent: %d)" indent))
+      (message "Prettier executable not found."))))
 
 (defun my/typescript-style-hook ()
   (let ((indent (my/get-conf "typescript" "indent" 2))
@@ -181,9 +179,9 @@
 ;; web-mode で React を書く時のための追加設定
 (add-hook 'web-mode-hook
   (lambda ()
-    (when (or (string-equal "tsx" (file-name-extension buffer-file-name))
-            (string-equal "jsx" (file-name-extension buffer-file-name)))
-      ;;(setup-tide-mode) ;; TideなどのLSPを使う場合はここに追加
+    (when (or (string-equal "tsx" (file-name-extension (or buffer-file-name "")))
+            (string-equal "jsx" (file-name-extension (or buffer-file-name ""))))
+      ;; ここで自前の整形関数を割り当てる
       (local-set-key (kbd "C-c C-r") 'my/typescript-format-code))))
 
 ;; ==========================================
