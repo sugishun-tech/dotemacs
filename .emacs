@@ -132,11 +132,17 @@
 ;; TypeScript / React (TSX) 設定
 ;; ==========================================
 (defun my/typescript-format-code ()
-  "Prettierを使用してコードを整形する"
+  "Prettierを使用してコードを整形する（インデント値を明示的に渡す）"
   (interactive)
   (if (executable-find "prettier")
-    (prettier-js)
-    (message "Prettier executable not found. Install it via 'npm install -g prettier'.")))
+    (let* ((indent (my/get-conf "web" "indent" 4)) ;; webの設定から取得 [cite: 2, 6]
+            ;; prettierのコマンドを組み立てる
+            (cmd (format "prettier --stdin-filepath %s --tab-width %d" 
+                   (or buffer-file-name "test.tsx") 
+                   indent)))
+      (shell-command-on-region (point-min) (point-max) cmd nil t)
+      (message "Prettier formatted with indent %d." indent))
+    (message "Prettier executable not found.")))
 
 (defun my/typescript-style-hook ()
   (let ((indent (my/get-conf "typescript" "indent" 2))
