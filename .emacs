@@ -33,8 +33,57 @@
     (if val (cdr val) default)))
 
 ;; ==========================================
-;; 3. Python (フォーマッタ維持)
+;; 3. 汎用：シンプルなTab挙動を設定する関数
 ;; ==========================================
+(defun my/apply-simple-tab-settings (mode-key)
+  "自動インデントを無効化し、Tabキーを単純なタブストップ移動にする"
+  (let ((indent (my/get-conf mode-key "indent" 2))
+        (use-tabs (my/get-conf mode-key "use_tabs" nil)))
+    
+    ;; 自動インデント関数を無効化（単なる改行や挿入にする）
+    (setq-local indent-line-function 'indent-to-left-margin)
+    
+    ;; 基本の幅設定
+    (setq-local tab-width indent)
+    (setq-local indent-tabs-mode use-tabs)
+    
+    ;; Tabキーの挙動を「次のタブストップへ移動」に固定
+    (local-set-key (kbd "TAB") 'tab-to-tab-stop)
+    ;; 0, 4, 8, 12... のようなタブストップリストを作成
+    (setq-local tab-stop-list (number-sequence 0 120 indent))
+    
+    ;; 各モード固有のインデント変数も一応合わせておく
+    (setq-local web-mode-markup-indent-offset indent)
+    (setq-local web-mode-code-indent-offset indent)
+    (setq-local web-mode-css-indent-offset indent)
+    (setq-local typescript-indent-level indent)
+    (setq-local js-indent-level indent)
+    
+    (message "%s: Simple Tab applied (width: %d)" mode-key indent)))
+
+;; ==========================================
+;; 4. 各モードへの適用（Hook）
+;; ==========================================
+
+;; Web Mode (HTML, TSX, JSX, CSS, JS)
+(add-hook 'web-mode-hook
+          (lambda ()
+            (let* ((ext (file-name-extension (or buffer-file-name "")))
+                   (mode-key (if (member ext '("tsx" "jsx" "ts" "js")) "typescript" "web")))
+              (setq-local web-mode-enable-auto-indentation nil)
+              (my/apply-simple-tab-settings mode-key)
+              (when (member ext '("tsx" "jsx"))
+                (web-mode-set-content-type "jsx")))))
+
+;; TypeScript Mode
+(add-hook 'typescript-mode-hook
+          (lambda () (my/apply-simple-tab-settings "typescript")))
+
+;; JSON Mode
+(add-hook 'json-mode-hook
+          (lambda () (my/apply-simple-tab-settings "json")))
+
+;; Python (ここだけはフォーマッタを残す)
 (defun my/python-format-code ()
   (interactive)
   (let* ((indent (my/get-conf "python" "indent" 4))
@@ -50,59 +99,16 @@
             (local-set-key (kbd "C-c C-r") 'my/python-format-code)))
 
 ;; ==========================================
-;; 4. Web Mode / TSX (Tabの自動機能を無効化)
-;; ==========================================
-(defun my/web-mode-simple-tab-hook ()
-  (let* ((ext (file-name-extension (or buffer-file-name "")))
-         (mode-key (if (member ext '("tsx" "jsx" "ts" "js")) "typescript" "web"))
-         (indent (my/get-conf mode-key "indent" 2))
-         (use-tabs (my/get-conf mode-key "use_tabs" nil)))
-
-    ;; web-mode の自動インデント計算を無効化する設定
-    (setq-local indent-line-function 'indent-to-left-margin) ; 自動計算をやめる
-    (setq-local web-mode-enable-auto-indentation nil)       ; 構文ベースの自動インデントオフ
-    (setq-local web-mode-enable-indentation-static t)      ; 静的インデント
-
-    ;; 基本的な幅の設定
-    (setq-local tab-width indent)
-    (setq-local indent-tabs-name use-tabs)
-    (setq-local web-mode-markup-indent-offset indent)
-    (setq-local web-mode-code-indent-offset indent)
-    (setq-local web-mode-css-indent-offset indent)
-
-    ;; Tabキーの挙動を「単なるインデント挿入」に上書き
-    (local-set-key (kbd "TAB") 'tab-to-tab-stop)
-    (setq-local tab-stop-list (number-sequence indent 120 indent))
-
-    (when (member ext '("tsx" "jsx"))
-      (web-mode-set-content-type "jsx"))
-    (message "web-mode: Simple Tab mode (width: %d)" indent)))
-
-(add-hook 'web-mode-hook 'my/web-mode-simple-tab-hook)
-
-;; ==========================================
-;; 5. TypeScript / JSON
-;; ==========================================
-(defun my/simple-indent-setup (mode-name)
-  (let ((indent (my/get-conf mode-name "indent" 2)))
-    (setq-local tab-width indent)
-    (setq-local indent-tabs-mode (my/get-conf mode-name "use_tabs" nil))
-    (setq-local typescript-indent-level indent)
-    (setq-local js-indent-level indent)))
-
-(add-hook 'typescript-mode-hook (lambda () (my/simple-indent-setup "typescript")))
-(add-hook 'json-mode-hook (lambda () (my/simple-indent-setup "json")))
-
-;; ==========================================
-;; 6. ファイル割り当て & 共通
+;; 5. ファイル割り当て & 共通設定
 ;; ==========================================
 (add-to-list 'auto-mode-alist '("\\.tsx\\'" . web-mode))
 (add-to-list 'auto-mode-alist '("\\.jsx\\'" . web-mode))
-(add-to-list 'auto-mode-alist '("\\.ts\\'" . typescript-mode))
-(add-to-list 'auto-mode-alist '("\\.json\\'" . json-mode))
 (add-to-list 'auto-mode-alist '("\\.html?\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.json\\'" . json-mode))
+(add-to-list 'auto-mode-alist '("\\.ts\\'" . typescript-mode))
 
 (setq web-mode-enable-auto-pairing t)
 (require 'emmet-mode)
 (add-hook 'web-mode-hook 'emmet-mode)
+
 (load-theme 'cyberpunk t)
