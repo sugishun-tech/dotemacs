@@ -154,6 +154,24 @@
 (add-to-list 'auto-mode-alist '("\\.tsx\\'" . web-mode))
 (add-to-list 'auto-mode-alist '("\\.jsx\\'" . web-mode))
 
+;; ==========================================
+;; TSX/JSX 用の追加設定 (ハイライトを有効にする)
+;; ==========================================
+(defun my/web-mode-tsx-setup ()
+  "tsxファイルを開いた時にweb-modeのエンジンを強制的に設定する"
+  (let ((ext (file-name-extension buffer-file-name)))
+    (when (string-equal ext "tsx")
+      (web-mode-set-content-type "jsx") ;; tsxも内部的にはjsxエンジンを使う
+      (message "web-mode: TSX content type set"))
+    (when (string-equal ext "jsx")
+      (web-mode-set-content-type "jsx"))))
+
+(add-hook 'web-mode-hook 'my/web-mode-tsx-setup)
+
+;; 構文ハイライトをより正確にするための設定
+(setq web-mode-enable-auto-pairing t)   ;; 括弧を自動で閉じる
+(setq web-mode-enable-css-colorization t) ;; CSSの色付け
+
 ;; web-mode で React を書く時のための追加設定
 (add-hook 'web-mode-hook
   (lambda ()
