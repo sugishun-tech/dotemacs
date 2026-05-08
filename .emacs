@@ -177,7 +177,7 @@
   (lambda ()
     (when (or (string-equal "tsx" (file-name-extension buffer-file-name))
             (string-equal "jsx" (file-name-extension buffer-file-name)))
-      (setup-tide-mode) ;; TideなどのLSPを使う場合はここに追加
+      ;;(setup-tide-mode) ;; TideなどのLSPを使う場合はここに追加
       (local-set-key (kbd "C-c C-r") 'my/typescript-format-code))))
 
 ;; ==========================================
