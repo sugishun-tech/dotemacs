@@ -9,7 +9,9 @@
      web-mode
      emmet-mode
      cython-mode
-     json-mode)) ;; JSONモードを追加
+     json-mode
+     typescript-mode 
+     prettier-js))
 
 (unless package-archive-contents (package-refresh-contents))
 (dolist (pkg my/packages)
@@ -125,6 +127,46 @@
 (add-hook 'json-mode-hook 'my/json-mode-hook)
 (with-eval-after-load 'json-mode (define-key json-mode-map (kbd "C-c C-r") 'my/json-format-code))
 
+
+;; ==========================================
+;; TypeScript / React (TSX) 設定
+;; ==========================================
+(defun my/typescript-format-code ()
+  "Prettierを使用してコードを整形する"
+  (interactive)
+  (if (executable-find "prettier")
+    (prettier-js)
+    (message "Prettier executable not found. Install it via 'npm install -g prettier'.")))
+
+(defun my/typescript-style-hook ()
+  (let ((indent (my/get-conf "typescript" "indent" 2))
+         (use-tabs (my/get-conf "typescript" "use_tabs" nil)))
+    (setq typescript-indent-level indent
+      indent-tabs-mode use-tabs)
+    (if use-tabs (setq tab-width indent))))
+
+;; TypeScript用設定
+(add-hook 'typescript-mode-hook 'my/typescript-style-hook)
+(with-eval-after-load 'typescript-mode
+  (define-key typescript-mode-map (kbd "C-c C-r") 'my/typescript-format-code))
+
+;; TSX (React TypeScript) は web-mode で扱う
+(add-to-list 'auto-mode-alist '("\\.tsx\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.jsx\\'" . web-mode))
+
+;; web-mode で React を書く時のための追加設定
+(add-hook 'web-mode-hook
+  (lambda ()
+    (when (or (string-equal "tsx" (file-name-extension buffer-file-name))
+            (string-equal "jsx" (file-name-extension buffer-file-name)))
+      (setup-tide-mode) ;; TideなどのLSPを使う場合はここに追加
+      (local-set-key (kbd "C-c C-r") 'my/typescript-format-code))))
+
+;; ==========================================
+;; その他共通設定
+;; ==========================================
+(require 'emmet-mode)
+(add-hook 'web-mode-hook 'emmet-mode)
 ;; ==========================================
 ;; その他共通設定
 ;; ==========================================
@@ -133,6 +175,7 @@
 (add-to-list 'auto-mode-alist '("\\.html?\\'" . web-mode))
 (add-to-list 'auto-mode-alist '("\\.css\\'" . web-mode))
 (add-to-list 'auto-mode-alist '("\\.js\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.ts\\'" . typescript-mode))
 (add-to-list 'auto-mode-alist '("\\.pyx\\'" . cython-mode))
 
 (load-theme 'cyberpunk t)

@@ -18,5 +18,9 @@
   "json": {
     "indent": 2,
     "use_tabs": false
+  },
+  "typescript": {
+    "indent": 4,
+    "use_tabs": false
   }
 }
