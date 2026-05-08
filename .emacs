@@ -29,86 +29,82 @@
 
 (defun my/get-conf (mode key default)
   (let* ((mode-conf (assoc mode my/esettings))
-         (val (assoc key (cdr mode-conf))))
+          (val (assoc key (cdr mode-conf))))
     (if val (cdr val) default)))
 
 ;; ==========================================
-;; 3. 汎用：シンプルなTab挙動を設定する関数
+;; 3. Python / Cython (ここは元のフォーマッタを完コピ)
+;; ==========================================
+(defun my/python-format-code ()
+  "Run autopep8 and isort."
+  (interactive)
+  (when (and (derived-mode-p 'python-mode) (executable-find "autopep8") (executable-find "isort"))
+    (let* ((indent (my/get-conf "python" "indent" 4))
+            (use-tabs (my/get-conf "python" "use_tabs" nil))
+            (ignore (if use-tabs "E501,W191,E101,E111,E114" "E501"))
+            (cmd (format "autopep8 --ignore=%s --indent-size=%d - | isort -" ignore indent)))
+      (shell-command-on-region (point-min) (point-max) cmd nil t)
+      (message "Python formatted."))))
+
+(defun my/python-style-hook ()
+  (let ((indent (my/get-conf "python" "indent" 4))
+        (use-tabs (my/get-conf "python" "use_tabs" nil)))
+    (setq python-indent-offset indent
+          indent-tabs-mode use-tabs
+          tab-width indent)))
+
+(add-hook 'python-mode-hook 'my/python-style-hook)
+(add-hook 'cython-mode-hook 'my/python-style-hook)
+(with-eval-after-load 'python
+  (define-key python-mode-map (kbd "C-c C-r") 'my/python-format-code))
+
+;; ==========================================
+;; 4. Web / TS / JSON / HTML (Tabをesettingsに固定)
 ;; ==========================================
 (defun my/apply-simple-tab-settings (mode-key)
-  "自動インデントを無効化し、Tabキーを単純なタブストップ移動にする"
+  "自動計算を殺して、Tabをesettingsの幅分だけ動くようにする"
   (let ((indent (my/get-conf mode-key "indent" 2))
         (use-tabs (my/get-conf mode-key "use_tabs" nil)))
-    
-    ;; 自動インデント関数を無効化（単なる改行や挿入にする）
+    ;; 自動インデントを無効化
     (setq-local indent-line-function 'indent-to-left-margin)
-    
-    ;; 基本の幅設定
     (setq-local tab-width indent)
     (setq-local indent-tabs-mode use-tabs)
-    
-    ;; Tabキーの挙動を「次のタブストップへ移動」に固定
+    ;; Tabキーを「次のタブストップへ移動」に強制上書き
     (local-set-key (kbd "TAB") 'tab-to-tab-stop)
-    ;; 0, 4, 8, 12... のようなタブストップリストを作成
     (setq-local tab-stop-list (number-sequence 0 120 indent))
-    
-    ;; 各モード固有のインデント変数も一応合わせておく
+    ;; 各モードの内部変数も念のため同期
     (setq-local web-mode-markup-indent-offset indent)
     (setq-local web-mode-code-indent-offset indent)
     (setq-local web-mode-css-indent-offset indent)
     (setq-local typescript-indent-level indent)
     (setq-local js-indent-level indent)
-    
     (message "%s: Simple Tab applied (width: %d)" mode-key indent)))
 
-;; ==========================================
-;; 4. 各モードへの適用（Hook）
-;; ==========================================
-
-;; Web Mode (HTML, TSX, JSX, CSS, JS)
+;; Web-mode (HTML, TSX, JSX, CSS, JS)
 (add-hook 'web-mode-hook
-          (lambda ()
-            (let* ((ext (file-name-extension (or buffer-file-name "")))
-                   (mode-key (if (member ext '("tsx" "jsx" "ts" "js")) "typescript" "web")))
-              (setq-local web-mode-enable-auto-indentation nil)
-              (my/apply-simple-tab-settings mode-key)
-              (when (member ext '("tsx" "jsx"))
-                (web-mode-set-content-type "jsx")))))
+  (lambda ()
+    (let* ((ext (file-name-extension (or buffer-file-name "")))
+            (mode-key (if (member ext '("tsx" "jsx" "ts" "js")) "typescript" "web")))
+      (setq-local web-mode-enable-auto-indentation nil) ; web-modeのお節介をオフ
+      (my/apply-simple-tab-settings mode-key)
+      (when (member ext '("tsx" "jsx"))
+        (web-mode-set-content-type "jsx")))))
 
-;; TypeScript Mode
-(add-hook 'typescript-mode-hook
-          (lambda () (my/apply-simple-tab-settings "typescript")))
-
-;; JSON Mode
-(add-hook 'json-mode-hook
-          (lambda () (my/apply-simple-tab-settings "json")))
-
-;; Python (ここだけはフォーマッタを残す)
-(defun my/python-format-code ()
-  (interactive)
-  (let* ((indent (my/get-conf "python" "indent" 4))
-         (cmd (format "autopep8 --indent-size=%d - | isort -" indent)))
-    (shell-command-on-region (point-min) (point-max) cmd nil t)))
-
-(add-hook 'python-mode-hook
-          (lambda ()
-            (let ((indent (my/get-conf "python" "indent" 4)))
-              (setq python-indent-offset indent
-                    indent-tabs-mode (my/get-conf "python" "use_tabs" nil)
-                    tab-width indent))
-            (local-set-key (kbd "C-c C-r") 'my/python-format-code)))
+;; TypeScript / JSON 
+(add-hook 'typescript-mode-hook (lambda () (my/apply-simple-tab-settings "typescript")))
+(add-hook 'json-mode-hook (lambda () (my/apply-simple-tab-settings "json")))
 
 ;; ==========================================
-;; 5. ファイル割り当て & 共通設定
+;; 5. ファイル割り当て & 共通
 ;; ==========================================
 (add-to-list 'auto-mode-alist '("\\.tsx\\'" . web-mode))
 (add-to-list 'auto-mode-alist '("\\.jsx\\'" . web-mode))
 (add-to-list 'auto-mode-alist '("\\.html?\\'" . web-mode))
 (add-to-list 'auto-mode-alist '("\\.json\\'" . json-mode))
 (add-to-list 'auto-mode-alist '("\\.ts\\'" . typescript-mode))
+(add-to-list 'auto-mode-alist '("\\.pyx\\'" . cython-mode))
 
 (setq web-mode-enable-auto-pairing t)
 (require 'emmet-mode)
 (add-hook 'web-mode-hook 'emmet-mode)
-
 (load-theme 'cyberpunk t)
